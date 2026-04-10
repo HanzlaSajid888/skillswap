@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'home_screen.dart'; // For FinalPage and UserProfile
 import 'personal_info_screen.dart';
 import 'chat_screen.dart';
+import 'models/user_profile.dart';
 
 class MessagesScreen extends StatefulWidget {
   const MessagesScreen({super.key});
@@ -13,40 +16,20 @@ class MessagesScreen extends StatefulWidget {
 class _MessagesScreenState extends State<MessagesScreen> {
   final TextEditingController _searchController = TextEditingController();
 
-  final List<Map<String, dynamic>> conversations = [
-    {
-      "name": "Sarah Chen",
-      "message": "Hey! Are we still on for our Python sessio...",
-      "time": "10:45 AM",
-      "photo": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&q=80",
-      "unread": 1,
-      "isOnline": true,
-    },
-    {
-      "name": "Marcus Thorne",
-      "message": "The Spanish resources you sent were really...",
-      "time": "YESTERDAY",
-      "photo": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=150&q=80",
-      "unread": 0,
-      "isOnline": false,
-    },
-    {
-      "name": "Elena Gilbert",
-      "message": "I just finished the React tutorial. What should I ...",
-      "time": "MONDAY",
-      "photo": "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=150&q=80",
-      "unread": 0,
-      "isOnline": true,
-    },
-    {
-      "name": "David Kim",
-      "message": "Can you help me with this CSS layout issue?",
-      "time": "OCT 12",
-      "photo": "https://images.unsplash.com/photo-1599566150163-29194dcaad36?auto=format&fit=crop&w=150&q=80",
-      "unread": 5,
-      "isOnline": false,
-    },
-  ];
+  String _formatTime(dynamic timestamp) {
+    if (timestamp == null) return "";
+    final DateTime dt = (timestamp as Timestamp).toDate();
+    final now = DateTime.now();
+    final diff = now.difference(dt);
+    if (diff.inDays == 0 && now.day == dt.day) {
+      return "${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}";
+    } else if (diff.inDays < 7) {
+      const days = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
+      return days[dt.weekday - 1];
+    } else {
+      return "${dt.day}/${dt.month}";
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -127,15 +110,61 @@ class _MessagesScreenState extends State<MessagesScreen> {
 
               // Conversations List
               Expanded(
-                child: ListView.separated(
-                  itemCount: conversations.length,
-                  separatorBuilder: (context, index) => Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8.0),
-                    child: Divider(color: Colors.grey.shade100, height: 1),
-                  ),
-                  itemBuilder: (context, index) {
-                    final convo = conversations[index];
-                    return _buildConversationItem(convo, textColor, subtitleColor, primaryColor);
+                child: StreamBuilder<QuerySnapshot>(
+                  stream: FirebaseFirestore.instance
+                      .collection('chats')
+                      .where('users', arrayContains: FirebaseAuth.instance.currentUser?.uid)
+                      .snapshots(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                      return Center(
+                        child: Text(
+                          "No active conversations yet.",
+                          style: TextStyle(color: Colors.grey.shade500),
+                        ),
+                      );
+                    }
+                    
+                    final sortedDocs = snapshot.data!.docs.toList();
+                    sortedDocs.sort((a, b) {
+                      final aData = a.data() as Map<String, dynamic>;
+                      final bData = b.data() as Map<String, dynamic>;
+                      final aTime = aData['lastMessageTime'] as Timestamp?;
+                      final bTime = bData['lastMessageTime'] as Timestamp?;
+                      if (aTime == null || bTime == null) return 0;
+                      return bTime.compareTo(aTime);
+                    });
+
+                    return ListView.separated(
+                      itemCount: sortedDocs.length,
+                      separatorBuilder: (context, index) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8.0),
+                        child: Divider(color: Colors.grey.shade100, height: 1),
+                      ),
+                      itemBuilder: (context, index) {
+                        final chatDoc = sortedDocs[index].data() as Map<String, dynamic>;
+                        final currentUid = FirebaseAuth.instance.currentUser?.uid;
+                        
+                        final users = List<dynamic>.from(chatDoc['users'] ?? []);
+                        users.remove(currentUid);
+                        final otherUid = users.isNotEmpty ? users.first : 'Unknown';
+                        
+                        final convo = {
+                          "id": otherUid,
+                          "name": chatDoc['userName_$otherUid'] ?? "Unknown User",
+                          "photo": chatDoc['userPhoto_$otherUid'] ?? "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80",
+                          "message": chatDoc['lastMessage'] ?? "📎 Attached file",
+                          "time": _formatTime(chatDoc['lastMessageTime']),
+                          "unread": chatDoc['unread_$currentUid'] ?? 0,
+                          "isOnline": false,
+                        };
+                        
+                        return _buildConversationItem(convo, textColor, subtitleColor, primaryColor);
+                      },
+                    );
                   },
                 ),
               ),
@@ -191,14 +220,14 @@ class _MessagesScreenState extends State<MessagesScreen> {
     
     return InkWell(
       onTap: () {
-        // Create a mock UserProfile for the ChatScreen using the convo data
+        // Create a UserProfile for the ChatScreen using the dynamic data
         final userProfile = UserProfile(
-          id: convo['name'], // Using name as a mock ID
+          id: convo['id'], 
           name: convo['name'],
-          age: 25, // Mock age
+          age: 25, // Fallback
           photo: convo['photo'],
-          skillsTeach: "REACT & UI DESIGN", // Mock teaching skills
-          skillsLearn: "PYTHON & BACKEND", // Mock learning skills
+          skillsTeach: "SKILL SWAPPER", // Fallback
+          skillsLearn: "ACTIVE", // Fallback
         );
         Navigator.push(
           context,

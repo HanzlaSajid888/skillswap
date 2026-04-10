@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'home_screen.dart'; // To navigate back
 import 'chat_screen.dart';
+import 'models/user_profile.dart';
 
 class MatchScreen extends StatelessWidget {
   final UserProfile matchedUser;

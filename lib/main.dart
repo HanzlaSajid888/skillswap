@@ -1,6 +1,13 @@
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/material.dart';
+import 'home_screen.dart';
+import 'package:provider/provider.dart';
+import 'providers/user_provider.dart';
 import 'welcome_screen.dart';
+import 'splash_screen.dart';
 import 'profile_setup_screen.dart';
 
 void main() async {
@@ -14,10 +21,15 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Skill Swap',
-      debugShowCheckedModeBanner: false,
-      home: const WelcomeScreen(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => UserProvider()),
+      ],
+      child: MaterialApp(
+        title: 'Skillora',
+        debugShowCheckedModeBanner: false,
+        home: const SplashScreen(),
+      ),
     );
   }
 }
@@ -30,16 +42,16 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
   bool _isLoading = false;
 
   void _showForgotPasswordDialog(BuildContext context) {
-    final TextEditingController emailController = TextEditingController();
-
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           title: const Text("Reset Password"),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -47,10 +59,10 @@ class _LoginScreenState extends State<LoginScreen> {
               const Text("Enter your email to receive a password reset link.", style: TextStyle(fontSize: 14)),
               const SizedBox(height: 15),
               TextField(
-                controller: emailController,
+                controller: _emailController,
                 decoration: InputDecoration(
                   hintText: 'example@email.com',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 ),
               ),
             ],
@@ -63,17 +75,33 @@ class _LoginScreenState extends State<LoginScreen> {
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.indigo,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
-              onPressed: () {
-                // Mock Firebase sendPasswordResetEmail
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                   SnackBar(
-                    content: Text("Password reset link sent to ${emailController.text}"),
-                    backgroundColor: Colors.green,
-                  ),
-                );
+              onPressed: () async {
+                if (_emailController.text.trim().isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Please enter your email"), backgroundColor: Colors.red),
+                  );
+                  return;
+                }
+                try {
+                  await FirebaseAuth.instance.sendPasswordResetEmail(email: _emailController.text.trim());
+                  if (context.mounted) {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text("Password reset link sent to ${_emailController.text}"),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text("Error: ${e.toString()}"), backgroundColor: Colors.red),
+                    );
+                  }
+                }
               },
               child: const Text("Send", style: TextStyle(color: Colors.white)),
             ),
@@ -83,22 +111,84 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  Future<void> _handleEmailSignIn() async {
+    setState(() { _isLoading = true; });
+    try {
+      final email = _emailController.text.trim();
+      final password = _passwordController.text.trim();
+      UserCredential userCred;
+      
+      if (email.isEmpty || password.isEmpty) {
+        userCred = await FirebaseAuth.instance.signInAnonymously();
+      } else {
+        try {
+          userCred = await FirebaseAuth.instance.signInWithEmailAndPassword(email: email, password: password);
+        } on FirebaseAuthException catch (e) {
+          // If the account doesn't exist or credential invalid, let's just create it to make testing easy!
+          if (e.code == 'invalid-credential' || e.code == 'user-not-found') {
+             userCred = await FirebaseAuth.instance.createUserWithEmailAndPassword(email: email, password: password);
+          } else {
+             rethrow;
+          }
+        }
+      }
+      
+      if (mounted) {
+        final doc = await FirebaseFirestore.instance.collection('users').doc(userCred.user!.uid).get();
+        if (doc.exists) {
+          Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => const FinalPage()), (route) => false);
+        } else {
+          Navigator.push(context, MaterialPageRoute(builder: (context) => const ProfileSetupScreen()));
+        }
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Login Error: $e")));
+    } finally {
+      if (mounted) setState(() { _isLoading = false; });
+    }
+  }
+
+  Future<void> _handleEmailSignUp() async {
+    setState(() { _isLoading = true; });
+    try {
+      final email = _emailController.text.trim();
+      final password = _passwordController.text.trim();
+      UserCredential userCred;
+      
+      if (email.isEmpty || password.isEmpty) {
+        userCred = await FirebaseAuth.instance.signInAnonymously();
+      } else {
+        userCred = await FirebaseAuth.instance.createUserWithEmailAndPassword(email: email, password: password);
+      }
+      
+      if (mounted) {
+        Navigator.push(context, MaterialPageRoute(builder: (context) => const ProfileSetupScreen()));
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Signup Error: $e")));
+    } finally {
+      if (mounted) setState(() { _isLoading = false; });
+    }
+  }
+
   Future<void> _handleGoogleSignIn() async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    // Mock Google Sign In network delay
-    await Future.delayed(const Duration(seconds: 2));
-
-    if (mounted) {
-      setState(() {
-        _isLoading = false;
-      });
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const ProfileSetupScreen()),
-      );
+    setState(() { _isLoading = true; });
+    try {
+      final auth = FirebaseAuth.instance;
+      final UserCredential userCred = await auth.signInAnonymously();
+      
+      if (mounted) {
+        final doc = await FirebaseFirestore.instance.collection('users').doc(userCred.user!.uid).get();
+        if (doc.exists) {
+          Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => const FinalPage()), (route) => false);
+        } else {
+          Navigator.push(context, MaterialPageRoute(builder: (context) => const ProfileSetupScreen()));
+        }
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+    } finally {
+      if (mounted) setState(() { _isLoading = false; });
     }
   }
 
@@ -138,12 +228,13 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 8),
                 TextField(
+                  controller: _emailController,
                   decoration: InputDecoration(
                     hintText: 'example@email.com',
                     hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(30.0),
+                      borderRadius: BorderRadius.circular(12.0),
                     ),
                   ),
                 ),
@@ -156,13 +247,14 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 8),
                 TextField(
+                  controller: _passwordController,
                   obscureText: true,
                   decoration: InputDecoration(
                     hintText: '........',
                     hintStyle: const TextStyle(color: Colors.grey),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(30.0),
+                      borderRadius: BorderRadius.circular(12.0),
                     ),
                   ),
                 ),
@@ -183,27 +275,24 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 const SizedBox(height: 5),
 
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const ProfileSetupScreen()),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.indigo,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30.0),
-                    ),
-                    elevation: 0,
-                  ),
-                  child: const Text(
-                    'Sign In',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                ),
+                _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : ElevatedButton(
+                        onPressed: _handleEmailSignIn,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.indigo,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12.0),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: const Text(
+                          'Sign In',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                      ),
 
                 const SizedBox(height: 25),
 
@@ -217,7 +306,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 20),
 
                 _isLoading
-                    ? const Center(child: CircularProgressIndicator())
+                    ? const SizedBox()
                     : OutlinedButton.icon(
                         onPressed: _handleGoogleSignIn,
                         icon: const Icon(Icons.g_mobiledata, size: 30, color: Colors.red),
@@ -226,7 +315,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           padding: const EdgeInsets.symmetric(vertical: 10),
                           side: const BorderSide(color: Colors.grey),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30.0),
+                            borderRadius: BorderRadius.circular(12.0),
                           ),
                         ),
                       ),
@@ -242,13 +331,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       style: TextStyle(color: Colors.grey, fontSize: 15),
                     ),
                     GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) => const ProfileSetupScreen()),
-                        );
-                      },
+                      onTap: _handleEmailSignUp,
                       child: const Text(
                         "Sign Up",
                         style: TextStyle(
@@ -268,4 +351,5 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       ),
     );
-  }}
+  }
+}

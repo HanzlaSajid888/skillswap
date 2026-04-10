@@ -15,6 +15,7 @@ class PersonalInfoScreen extends StatefulWidget {
 
 class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
   Map<String, dynamic>? userData;
+  Map<String, dynamic>? latestReview;
   bool isLoading = true;
 
   @override
@@ -32,8 +33,26 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
           .get();
 
       if (snapshot.docs.isNotEmpty) {
+        final doc = snapshot.docs.first;
+        final data = doc.data();
+
+        // Fetch latest review for this user
+        final reviewSnapshot = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(doc.id)
+            .collection('reviews')
+            .orderBy('timestamp', descending: true)
+            .limit(1)
+            .get();
+
+        Map<String, dynamic>? reviewData;
+        if (reviewSnapshot.docs.isNotEmpty) {
+           reviewData = reviewSnapshot.docs.first.data();
+        }
+
         setState(() {
-          userData = snapshot.docs.first.data();
+          userData = data;
+          latestReview = reviewData;
           isLoading = false;
         });
       } else {
@@ -174,11 +193,20 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                           children: [
-                            _buildStatColumn("4.8", "RATING", textColor, subtitleColor),
+                            _buildStatColumn(
+                              (userData?['averageRating'] ?? 0.0).toStringAsFixed(1), 
+                              "RATING", textColor, subtitleColor
+                            ),
                             Container(width: 1, height: 40, color: Colors.grey.shade300),
-                            _buildStatColumn("12", "SESSIONS", textColor, subtitleColor),
+                            _buildStatColumn(
+                              (userData?['reviewCount'] ?? 0).toString(), 
+                              "SESSIONS", textColor, subtitleColor
+                            ),
                             Container(width: 1, height: 40, color: Colors.grey.shade300),
-                            _buildStatColumn("8", "SKILLS", textColor, subtitleColor),
+                            _buildStatColumn(
+                              (userData?['teachSkills'] as List<dynamic>?)?.length.toString() ?? "0", 
+                              "SKILLS", textColor, subtitleColor
+                            ),
                           ],
                         ),
                       ],
@@ -266,7 +294,14 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                         const SizedBox(height: 15),
 
                         // Review Card
-                        _buildReviewCard(textColor, subtitleColor),
+                        latestReview != null 
+                            ? _buildReviewCard(textColor, subtitleColor)
+                            : Center(
+                                child: Text(
+                                  "No reviews yet.",
+                                  style: TextStyle(color: subtitleColor, fontStyle: FontStyle.italic),
+                                ),
+                              ),
 
                         const SizedBox(height: 80), // extra padding for scrolling
                       ],
@@ -413,6 +448,9 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
 
   // Builder for the Review Card
   Widget _buildReviewCard(Color textColor, Color subtitleColor) {
+    double rating = (latestReview?['rating'] ?? 5.0).toDouble();
+    String reviewText = latestReview?['review'] ?? "Great mentor!";
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -434,12 +472,13 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
             children: [
               const CircleAvatar(
                 radius: 16,
-                backgroundImage: NetworkImage('https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&q=80'),
+                backgroundColor: Colors.indigo,
+                child: Icon(Icons.person, color: Colors.white, size: 18),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  "Sarah Chen",
+                  "Student User", // Anonymous or generic since we only track review text
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.bold,
@@ -447,20 +486,20 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                   ),
                 ),
               ),
-              const Row(
-                children: [
-                  Icon(Icons.star, color: Colors.amber, size: 16),
-                  Icon(Icons.star, color: Colors.amber, size: 16),
-                  Icon(Icons.star, color: Colors.amber, size: 16),
-                  Icon(Icons.star, color: Colors.amber, size: 16),
-                  Icon(Icons.star, color: Colors.amber, size: 16),
-                ],
+              Row(
+                children: List.generate(5, (index) {
+                  return Icon(
+                    index < rating.round() ? Icons.star : Icons.star_border, 
+                    color: Colors.amber, 
+                    size: 16
+                  );
+                }),
               ),
             ],
           ),
           const SizedBox(height: 15),
           Text(
-            '"Alex is an amazing teacher! He explained React hooks so clearly."',
+            '"$reviewText"',
             style: TextStyle(
               fontSize: 14,
               fontStyle: FontStyle.italic,

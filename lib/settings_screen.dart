@@ -252,7 +252,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       icon: Icons.info_outline,
                       iconColor: Colors.grey.shade600,
                       iconBgColor: Colors.grey.shade100,
-                      title: "About SkillSwap",
+                      title: "About Skillora",
                       textColor: textColor,
                       onTap: () {},
                     ),
@@ -310,7 +310,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               // Footer
               Center(
                 child: Text(
-                  "SkillSwap v1.2.4 • Made with ❤️ by Hanzla Sajid",
+                  "Skillora v1.2.4 • Made ❤️ by Hanzla Sajid",
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w500,

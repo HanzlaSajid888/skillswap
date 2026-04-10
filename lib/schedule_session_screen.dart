@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'home_screen.dart'; // For UserProfile
+import 'models/user_profile.dart';
 
 class ScheduleSessionScreen extends StatefulWidget {
   final UserProfile chatUser;
@@ -224,7 +225,7 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen> {
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30.0),
+                      borderRadius: BorderRadius.circular(12.0),
                     ),
                     elevation: 0,
                   ),

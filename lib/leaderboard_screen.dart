@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'learning_dashboard_screen.dart';
 
 class LeaderboardScreen extends StatefulWidget {
@@ -10,6 +11,50 @@ class LeaderboardScreen extends StatefulWidget {
 
 class _LeaderboardScreenState extends State<LeaderboardScreen> {
   String selectedTab = "WEEKLY";
+  List<Map<String, dynamic>> topMentors = [];
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchLeaderboard();
+  }
+
+  Future<void> _fetchLeaderboard() async {
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .orderBy('averageRating', descending: true)
+          .limit(20)
+          .get();
+          
+      List<Map<String, dynamic>> fetchedMentors = [];
+      int rank = 1;
+      for (var doc in snapshot.docs) {
+        var data = doc.data();
+        List<dynamic>? teachSkills = data['teachSkills'];
+        String expertise = (teachSkills != null && teachSkills.isNotEmpty) 
+            ? teachSkills[0].toString() 
+            : "Mentor";
+            
+        fetchedMentors.add({
+          "rank": rank++,
+          "name": data['name'] ?? "Unknown",
+          "expertise": expertise,
+          "rating": (data['averageRating'] ?? 0.0).toStringAsFixed(1),
+          "photo": data['photo'] ?? 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=400&q=80',
+        });
+      }
+      
+      setState(() {
+         topMentors = fetchedMentors;
+         isLoading = false;
+      });
+    } catch (e) {
+       debugPrint("Error fetching leaderboard: $e");
+       setState(() => isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -19,57 +64,15 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
     final Color subtitleColor = const Color(0xFF64748B);
     final Color primaryThemeColor = Colors.indigo;
     final Color secondaryThemeColor = Colors.indigo.shade400;
-    
-    // Mentor mock data
-    final List<Map<String, dynamic>> weeklyMentors = [
-      {
-        "rank": 1,
-        "name": "Elena Gilbert",
-        "expertise": "Master Guitarist",
-        "rating": "5.0",
-        "photo": "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=150&q=80",
-      },
-      {
-        "rank": 2,
-        "name": "Sarah Chen",
-        "expertise": "UI/UX Specialist",
-        "rating": "4.9",
-        "photo": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&q=80",
-      },
-      {
-        "rank": 3,
-        "name": "Alex Rivera",
-        "expertise": "Frontend Expert",
-        "rating": "4.8",
-        "photo": "https://images.unsplash.com/photo-1599566150163-29194dcaad36?auto=format&fit=crop&w=150&q=80",
-      },
-    ];
 
-    final List<Map<String, dynamic>> allTimeMentors = [
-      {
-        "rank": 1,
-        "name": "David Smith",
-        "expertise": "Senior Developer",
-        "rating": "5.0",
-        "photo": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=150&q=80",
-      },
-      {
-        "rank": 2,
-        "name": "Emma Watson",
-        "expertise": "Data Scientist",
-        "rating": "4.9",
-        "photo": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=150&q=80",
-      },
-      {
-        "rank": 3,
-        "name": "Michael Lee",
-        "expertise": "Cloud Architect",
-        "rating": "4.9",
-        "photo": "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=150&q=80",
-      },
-    ];
+    final displayedMentors = topMentors;
 
-    final displayedMentors = selectedTab == "WEEKLY" ? weeklyMentors : allTimeMentors;
+    if (isLoading) {
+      return Scaffold(
+        backgroundColor: backgroundColor,
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
 
     return Scaffold(
       backgroundColor: backgroundColor,
@@ -127,44 +130,59 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
                       const SizedBox(height: 30),
                       
                       // Podium
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          // 2nd Place
-                          _buildPodiumAvatar(
-                             displayedMentors[1]['photo'],
-                             displayedMentors[1]['name'],
-                             2,
-                             60,
-                             Colors.grey.shade300,
-                          ),
-                          const SizedBox(width: 15),
-                          
-                          // 1st Place
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 20.0),
-                            child: _buildPodiumAvatar(
-                               displayedMentors[0]['photo'],
-                               displayedMentors[0]['name'],
-                               1,
-                               80,
-                               Colors.amber,
-                               hasCrown: true,
+                      if (displayedMentors.length >= 3)
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            // 2nd Place
+                            _buildPodiumAvatar(
+                               displayedMentors[1]['photo'],
+                               displayedMentors[1]['name'],
+                               2,
+                               60,
+                               Colors.grey.shade300,
                             ),
+                            const SizedBox(width: 15),
+                            
+                            // 1st Place
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 20.0),
+                              child: _buildPodiumAvatar(
+                                 displayedMentors[0]['photo'],
+                                 displayedMentors[0]['name'],
+                                 1,
+                                 80,
+                                 Colors.amber,
+                                 hasCrown: true,
+                              ),
+                            ),
+                            const SizedBox(width: 15),
+                            
+                            // 3rd Place
+                            _buildPodiumAvatar(
+                               displayedMentors[2]['photo'],
+                               displayedMentors[2]['name'],
+                               3,
+                               60,
+                               Colors.orange.shade300, // Bronze
+                            ),
+                          ],
+                        )
+                      else if (displayedMentors.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 20.0),
+                          child: _buildPodiumAvatar(
+                             displayedMentors[0]['photo'],
+                             displayedMentors[0]['name'],
+                             1,
+                             80,
+                             Colors.amber,
+                             hasCrown: true,
                           ),
-                          const SizedBox(width: 15),
-                          
-                          // 3rd Place
-                          _buildPodiumAvatar(
-                             displayedMentors[2]['photo'],
-                             displayedMentors[2]['name'],
-                             3,
-                             60,
-                             Colors.orange.shade300, // Bronze
-                          ),
-                        ],
-                      ),
+                        )
+                      else
+                        const SizedBox(height: 100, child: Center(child: Text("No mentors yet! Let's get reviewing.", style: TextStyle(color: Colors.white)))),
                     ],
                   ),
                 ),

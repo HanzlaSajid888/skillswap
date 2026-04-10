@@ -7,25 +7,11 @@ import 'personal_info_screen.dart';
 import 'match_screen.dart';
 import 'messages_screen.dart'; // Add Messages screen import
 
+import 'package:provider/provider.dart';
+import 'providers/user_provider.dart';
+import 'models/user_profile.dart';
+
 final FirebaseFirestore firestore = FirebaseFirestore.instance;
-
-class UserProfile {
-  final String id;
-  final String name;
-  final int age;
-  final String photo;
-  final String skillsTeach;
-  final String skillsLearn;
-
-  UserProfile({
-    required this.id,
-    required this.name,
-    required this.age,
-    required this.photo,
-    required this.skillsTeach,
-    required this.skillsLearn,
-  });
-}
 
 class FinalPage extends StatefulWidget {
   const FinalPage({super.key});
@@ -34,46 +20,41 @@ class FinalPage extends StatefulWidget {
   State<FinalPage> createState() => _FinalPageState();
 }
 
-class _FinalPageState extends State<FinalPage> {
+class _FinalPageState extends State<FinalPage> with TickerProviderStateMixin {
   final AppinioSwiperController controller = AppinioSwiperController();
-
-  List<UserProfile> users = [];
+  late AnimationController _slideController;
+  late Animation<Offset> _slideAnimation;
+  int _currentIndex = 0;
 
   @override
   void initState() {
     super.initState();
-    fetchUsers();
+    _slideController = AnimationController(
+       vsync: this, 
+       duration: const Duration(milliseconds: 800),
+    );
+    _slideAnimation = Tween<Offset>(begin: const Offset(0, 1.2), end: Offset.zero).animate(
+      CurvedAnimation(parent: _slideController, curve: Curves.easeOutCubic),
+    );
+    _slideController.forward();
+    
+    // Fetch users via provider after init
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<UserProvider>(context, listen: false).fetchUsers();
+    });
   }
 
-  // Firestore se users fetch karne ka function
-  void fetchUsers() async {
-    try {
-      QuerySnapshot snapshot = await FirebaseFirestore.instance.collection("users").get();
-
-      setState(() {
-        users = snapshot.docs.map((doc) {
-          final data = doc.data() as Map<String, dynamic>;
-          return UserProfile(
-            id: doc.id,
-            name: data['name'] ?? 'Unknown',
-            age: data['age'] ?? 0,
-            photo: data['photo'] ?? 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=400&q=80',
-            skillsTeach: data.containsKey('teachSkills') 
-                ? ((data['teachSkills'] as List?)?.join(', ') ?? '') 
-                : '',
-            skillsLearn: data.containsKey('learnSkills') 
-                ? ((data['learnSkills'] as List?)?.join(', ') ?? '') 
-                : '',
-          );
-        }).toList();
-      });
-    } catch (e) {
-      debugPrint("Error fetching users: $e");
-    }
+  @override
+  void dispose() {
+    _slideController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final userProvider = Provider.of<UserProvider>(context);
+    List<UserProfile> users = userProvider.users;
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -86,14 +67,30 @@ class _FinalPageState extends State<FinalPage> {
                 children: [
                   Row(
                     children: [
-                      CircleAvatar(
-                        radius: 18,
-                        backgroundColor: Colors.indigo.shade100,
-                        child: const Icon(Icons.people, color: Colors.indigo),
+                      Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 5,
+                            )
+                          ],
+                        ),
+                        child: ClipOval(
+                          child: Image.asset(
+                            'assets/images/logo.png',
+                            width: 36, 
+                            height: 36, 
+                            fit: BoxFit.cover, 
+                          ),
+                        ),
                       ),
                       const SizedBox(width: 10),
                       const Text(
-                        "SkillSwap",
+                        "Skillora",
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
@@ -140,22 +137,25 @@ class _FinalPageState extends State<FinalPage> {
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                child: users.isEmpty
-                    ? const Center(child: Text("No more users!"))
-                    : AppinioSwiper(
-                  controller: controller,
-                  cardCount: users.length,
-                  onSwipeBegin: (int previousIndex, int targetIndex, SwiperActivity activity) {},
-                  onSwipeEnd: (int previousIndex, int targetIndex, SwiperActivity activity) {},
-                  onEnd: () {
-                    setState(() {
-                      users.clear();
-                    });
-                  },
-                  cardBuilder: (BuildContext context, int index) {
-                    return _buildCard(users[index]);
-                  },
-                ),
+                child: userProvider.isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : users.isEmpty
+                        ? const Center(child: Text("No more users!"))
+                        : SlideTransition(
+                            position: _slideAnimation,
+                            child: AppinioSwiper(
+                              controller: controller,
+                              cardCount: users.length,
+                              onSwipeBegin: (int previousIndex, int targetIndex, SwiperActivity activity) {},
+                              onSwipeEnd: (int previousIndex, int targetIndex, SwiperActivity activity) {
+                                _currentIndex = targetIndex;
+                              },
+                              onEnd: () {}, // Handled by AppinioSwiper logic and removing elements isn't needed visually here yet
+                              cardBuilder: (BuildContext context, int index) {
+                                return _buildCard(users[index]);
+                              },
+                            ),
+                          ),
               ),
             ),
 
@@ -166,7 +166,7 @@ class _FinalPageState extends State<FinalPage> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  GestureDetector(
+                  AnimatedBounceButton(
                     onTap: () { controller.swipeLeft(); },
                     child: CircleAvatar(
                       radius: 28,
@@ -174,10 +174,10 @@ class _FinalPageState extends State<FinalPage> {
                       child: const Icon(Icons.close, color: Colors.red),
                     ),
                   ),
-                  GestureDetector(
+                  AnimatedBounceButton(
                     onTap: () {
-                      if (users.isNotEmpty) {
-                        _showReviewDialog(context, users.first);
+                      if (users.isNotEmpty && _currentIndex < users.length) {
+                        _showReviewDialog(context, users[_currentIndex]);
                       }
                     },
                     child: CircleAvatar(
@@ -186,11 +186,12 @@ class _FinalPageState extends State<FinalPage> {
                       child: const Icon(Icons.star, color: Colors.amber),
                     ),
                   ),
-                  GestureDetector(
+                  AnimatedBounceButton(
                     onTap: () {
-                      if (users.isNotEmpty) {
-                        final matchedUser = users.first;
+                      if (users.isNotEmpty && _currentIndex < users.length) {
+                        final matchedUser = users[_currentIndex];
                         controller.swipeRight();
+                        
                         Navigator.push(
                           context,
                           MaterialPageRoute(
@@ -410,14 +411,35 @@ class _FinalPageState extends State<FinalPage> {
               ),
               onPressed: () async {
                 try {
-                  await FirebaseFirestore.instance
-                      .collection('users')
-                      .doc(user.id)
-                      .collection('reviews')
-                      .add({
-                    'rating': rating,
-                    'review': reviewController.text,
-                    'timestamp': FieldValue.serverTimestamp(),
+                  final userRef = FirebaseFirestore.instance.collection('users').doc(user.id);
+
+                  await FirebaseFirestore.instance.runTransaction((transaction) async {
+                    // 1. Read current user doc
+                    DocumentSnapshot userDoc = await transaction.get(userRef);
+                    if (!userDoc.exists) {
+                      throw Exception("User does not exist!");
+                    }
+                    
+                    final data = userDoc.data() as Map<String, dynamic>;
+                    double currentRating = (data['averageRating'] ?? 0.0).toDouble();
+                    int reviewCount = (data['reviewCount'] ?? 0).toInt();
+                    
+                    // 2. Calculate new average
+                    double newAverage = ((currentRating * reviewCount) + rating) / (reviewCount + 1);
+                    
+                    // 3. Add to subcollection
+                    DocumentReference newReviewRef = userRef.collection('reviews').doc();
+                    transaction.set(newReviewRef, {
+                      'rating': rating,
+                      'review': reviewController.text,
+                      'timestamp': FieldValue.serverTimestamp(),
+                    });
+                    
+                    // 4. Update user doc
+                    transaction.update(userRef, {
+                      'averageRating': newAverage,
+                      'reviewCount': reviewCount + 1,
+                    });
                   });
 
                   if (context.mounted) {
@@ -485,28 +507,14 @@ class UserSearchDelegate extends SearchDelegate {
   }
 
   Widget _buildSuggestionsOrResults() {
-    return FutureBuilder<QuerySnapshot>(
-      future: FirebaseFirestore.instance.collection("users").get(),
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) {
+    return Consumer<UserProvider>(
+      builder: (context, provider, child) {
+        if (provider.isLoading) {
           return const Center(child: CircularProgressIndicator());
         }
 
-        final List<UserProfile> users = snapshot.data!.docs.map((doc) {
-          final data = doc.data() as Map<String, dynamic>;
-          return UserProfile(
-            id: doc.id,
-            name: data['name'] ?? 'Unknown',
-            age: data['age'] ?? 0,
-            photo: data['photo'] ?? 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=400&q=80',
-            skillsTeach: data.containsKey('teachSkills') 
-                ? (data['teachSkills'] as List).join(', ') 
-                : 'Flutter, Dart',
-            skillsLearn: data.containsKey('wantSkills') 
-                ? (data['wantSkills'] as List).join(', ') 
-                : 'UI/UX, Firebase',
-          );
-        }).toList();
+        final users = provider.users;
+
 
         final matches = users.where((user) {
           final nameLower = user.name.toLowerCase();
@@ -542,6 +550,54 @@ class UserSearchDelegate extends SearchDelegate {
           },
         );
       },
+    );
+  }
+}
+
+class AnimatedBounceButton extends StatefulWidget {
+  final Widget child;
+  final VoidCallback onTap;
+
+  const AnimatedBounceButton({super.key, required this.child, required this.onTap});
+
+  @override
+  State<AnimatedBounceButton> createState() => _AnimatedBounceButtonState();
+}
+
+class _AnimatedBounceButtonState extends State<AnimatedBounceButton> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+       vsync: this, 
+       duration: const Duration(milliseconds: 100),
+    );
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.85).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => _controller.forward(),
+      onTapUp: (_) {
+         _controller.reverse().then((value) => widget.onTap());
+      },
+      onTapCancel: () => _controller.reverse(),
+      child: ScaleTransition(
+        scale: _scaleAnimation,
+        child: widget.child,
+      ),
     );
   }
 }

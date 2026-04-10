@@ -163,7 +163,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                     hintText: 'john doe',
                     contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(30.0),
+                      borderRadius: BorderRadius.circular(12.0),
                     ),
                   ),
                 ),
@@ -179,7 +179,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                     hintText: '22',
                     contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(30.0),
+                      borderRadius: BorderRadius.circular(12.0),
                     ),
                   ),
                 ),
@@ -195,7 +195,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                     hintText: 'what makes you unique',
                     contentPadding: const EdgeInsets.all(20),
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(20.0),
+                      borderRadius: BorderRadius.circular(12.0),
                     ),
                   ),
                 ),
@@ -211,6 +211,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                           name: _nameController.text.trim(),
                           age: int.tryParse(_ageController.text.trim()) ?? 0,
                           bio: _bioController.text.trim(),
+                          image: _image,
                         ),
                       ),
                     );
@@ -220,7 +221,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30.0),
+                      borderRadius: BorderRadius.circular(12.0),
                     ),
                   ),
                   child: const Text(

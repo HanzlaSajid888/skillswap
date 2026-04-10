@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
-import 'home_screen.dart';
+import 'dart:io';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-
-
+import 'home_screen.dart';
 
 class LearnSkillsPage extends StatefulWidget {
   final String name;
   final int age;
   final String bio;
   final List<String> teachSkills;
+  final File? image;
 
   const LearnSkillsPage({
     super.key,
@@ -16,6 +18,7 @@ class LearnSkillsPage extends StatefulWidget {
     required this.age,
     required this.bio,
     required this.teachSkills,
+    this.image,
   });
 
   @override
@@ -32,17 +35,47 @@ class _LearnSkillsPageState extends State<LearnSkillsPage> {
 
   List<String> selectedSkills = [];
 
+  bool _isSaving = false;
+
   Future<void> saveUserData() async {
-    await FirebaseFirestore.instance.collection("users").add({
-      "name": widget.name,
-      "age": widget.age,
-      "bio": widget.bio,
-      "teachSkills": widget.teachSkills,
-      "learnSkills": selectedSkills,
-      "createdAt": FieldValue.serverTimestamp(),
-    }).timeout(const Duration(seconds: 10), onTimeout: () {
-      throw Exception("Connection timed out. Please check your internet connection and try again.");
-    });
+    setState(() { _isSaving = true; });
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        throw Exception("You must be logged in to save your profile.");
+      }
+
+      String photoUrl = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=400&q=80'; // default
+      
+      if (widget.image != null) {
+        try {
+          final storageRef = FirebaseStorage.instance
+              .ref()
+              .child('profile_pictures')
+              .child('${user.uid}.jpg');
+          
+          await storageRef.putFile(widget.image!);
+          photoUrl = await storageRef.getDownloadURL();
+        } catch (e) {
+          debugPrint("Failed to upload image, falling back to default. Error: $e");
+          // Proceed with the default photoUrl if upload fails
+        }
+      }
+
+      await FirebaseFirestore.instance.collection("users").doc(user.uid).set({
+        "id": user.uid,
+        "name": widget.name,
+        "age": widget.age,
+        "bio": widget.bio,
+        "photo": photoUrl,
+        "teachSkills": widget.teachSkills,
+        "learnSkills": selectedSkills,
+        "rating": 5.0,
+        "createdAt": FieldValue.serverTimestamp(),
+      });
+    } finally {
+      if (mounted) setState(() { _isSaving = false; });
+    }
   }
 
   @override
@@ -58,7 +91,7 @@ class _LearnSkillsPageState extends State<LearnSkillsPage> {
             children: [
               const SizedBox(height: 20),
 
-              Row(
+              Row( 
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Expanded(
@@ -136,7 +169,7 @@ class _LearnSkillsPageState extends State<LearnSkillsPage> {
                         fontSize: 14,
                       ),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
+                        borderRadius: BorderRadius.circular(12),
                         side: BorderSide(
                           color: isSelected ? Colors.indigo : Colors.grey.shade300,
                           width: 1,
@@ -169,7 +202,7 @@ class _LearnSkillsPageState extends State<LearnSkillsPage> {
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         side: const BorderSide(color: Colors.grey),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30),
+                          borderRadius: BorderRadius.circular(12),
                         ),
                       ),
                       child: const Text(
@@ -209,14 +242,22 @@ class _LearnSkillsPageState extends State<LearnSkillsPage> {
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30),
+                          borderRadius: BorderRadius.circular(12),
                         ),
                         elevation: 0,
                       ),
-                      child: const Text(
-                        "Finish",
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
+                      child: _isSaving
+                          ? const Center(
+                              child: SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                              ),
+                            )
+                          : const Text(
+                              "Finish",
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
                     ),
                   ),
                 ],

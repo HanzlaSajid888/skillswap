@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
+import 'dart:io';
 import 'learn_skills_screen.dart';
-
 class TeachSkillsScreen extends StatefulWidget {
   final String name;
   final int age;
   final String bio;
+  final File? image;
 
   const TeachSkillsScreen({
     super.key,
     required this.name,
     required this.age,
     required this.bio,
+    this.image,
   });
 
   @override
@@ -114,7 +116,7 @@ class _TeachSkillsScreenState extends State<TeachSkillsScreen> {
                               fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                             ),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(30),
+                              borderRadius: BorderRadius.circular(12),
                               side: BorderSide(
                                 color: isSelected ? Colors.indigo : Colors.grey.shade300,
                               ),
@@ -148,7 +150,7 @@ class _TeachSkillsScreenState extends State<TeachSkillsScreen> {
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           side: const BorderSide(color: Colors.grey),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30),
+                            borderRadius: BorderRadius.circular(12),
                           ),
                         ),
                         child: const Text("Back", style: TextStyle(color: Colors.black)),
@@ -166,6 +168,7 @@ class _TeachSkillsScreenState extends State<TeachSkillsScreen> {
                                 age: widget.age,
                                 bio: widget.bio,
                                 teachSkills: selectedSkills,
+                                image: widget.image,
                               ),
                             ),
                           );
@@ -175,7 +178,7 @@ class _TeachSkillsScreenState extends State<TeachSkillsScreen> {
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30),
+                            borderRadius: BorderRadius.circular(12),
                           ),
                           elevation: 0,
                         ),

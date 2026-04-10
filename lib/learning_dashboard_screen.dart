@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class LearningDashboardScreen extends StatefulWidget {
   const LearningDashboardScreen({super.key});
@@ -12,6 +14,32 @@ class _LearningDashboardScreenState extends State<LearningDashboardScreen> {
   double reactProgress = 0.75;
   double spanishProgress = 0.40;
   double designProgress = 1.0;
+  int completedSessions = 0;
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchProgress();
+  }
+
+  Future<void> _fetchProgress() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      try {
+        final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+        if (doc.exists) {
+          final data = doc.data() as Map<String, dynamic>;
+          setState(() {
+            completedSessions = (data['completedSessions'] ?? 0).toInt();
+          });
+        }
+      } catch (e) {
+        debugPrint("Error fetching progress: $e");
+      }
+    }
+    setState(() => isLoading = false);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -52,7 +80,7 @@ class _LearningDashboardScreenState extends State<LearningDashboardScreen> {
                    Expanded(
                     child: _buildStatBox(
                       "COMPLETED",
-                      "3",
+                      completedSessions.toString(),
                       "Skills",
                       Colors.indigo.shade50,
                       Colors.indigo,
