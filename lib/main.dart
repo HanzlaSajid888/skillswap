@@ -9,10 +9,21 @@ import 'providers/user_provider.dart';
 import 'welcome_screen.dart';
 import 'splash_screen.dart';
 import 'profile_setup_screen.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'utils/notification_service.dart';
+import 'signup_screen.dart';
+
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
+  print("Handling a background message: ${message.messageId}");
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  await NotificationService.init();
   runApp(const MyApp());
 }
 
@@ -119,14 +130,22 @@ class _LoginScreenState extends State<LoginScreen> {
       UserCredential userCred;
       
       if (email.isEmpty || password.isEmpty) {
-        userCred = await FirebaseAuth.instance.signInAnonymously();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Email and password are required.", style: TextStyle(color: Colors.white)), 
+            backgroundColor: Colors.red,
+          ),
+        );
+        setState(() { _isLoading = false; });
+        return;
       } else {
         try {
           userCred = await FirebaseAuth.instance.signInWithEmailAndPassword(email: email, password: password);
         } on FirebaseAuthException catch (e) {
-          // If the account doesn't exist or credential invalid, let's just create it to make testing easy!
-          if (e.code == 'invalid-credential' || e.code == 'user-not-found') {
-             userCred = await FirebaseAuth.instance.createUserWithEmailAndPassword(email: email, password: password);
+          if (e.code == 'user-not-found') {
+             throw Exception("No user found for that email. Please sign up.");
+          } else if (e.code == 'wrong-password' || e.code == 'invalid-credential') {
+             throw Exception("Wrong password provided.");
           } else {
              rethrow;
           }
@@ -331,7 +350,12 @@ class _LoginScreenState extends State<LoginScreen> {
                       style: TextStyle(color: Colors.grey, fontSize: 15),
                     ),
                     GestureDetector(
-                      onTap: _handleEmailSignUp,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const SignupScreen()),
+                        );
+                      },
                       child: const Text(
                         "Sign Up",
                         style: TextStyle(

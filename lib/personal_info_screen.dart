@@ -268,6 +268,26 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
 
                         const SizedBox(height: 35),
 
+                        // Endorsements & Badges Section
+                        if (userData != null && userData!.containsKey('badges') && (userData!['badges'] as Map).isNotEmpty) ...[
+                          Text(
+                            "ENDORSEMENTS & BADGES",
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: subtitleColor,
+                              letterSpacing: 1.2,
+                            ),
+                          ),
+                          const SizedBox(height: 15),
+                          Wrap(
+                            spacing: 12,
+                            runSpacing: 12,
+                            children: _buildBadgesList(userData!['badges'] as Map<String, dynamic>),
+                          ),
+                          const SizedBox(height: 35),
+                        ],
+
                         // Recent Reviews Header
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -441,6 +461,46 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
             fontWeight: FontWeight.w600,
             color: Colors.indigo.shade900,
           ),
+        ),
+      );
+    }).toList();
+  }
+
+  // Generate badges chips
+  List<Widget> _buildBadgesList(Map<String, dynamic> badges) {
+    final Map<String, String> badgeIcons = {
+      'Top Mentor': '🌟',
+      'Fast Responder': '⚡',
+      'Good Communicator': '🗣️',
+      'Creative Solver': '💡',
+    };
+
+    return badges.entries.map((entry) {
+      String badgeName = entry.key;
+      int count = entry.value as int;
+      String icon = badgeIcons[badgeName] ?? '🏆';
+
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.amber.shade50,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.amber.shade200),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(icon, style: const TextStyle(fontSize: 14)),
+            const SizedBox(width: 6),
+            Text(
+              "$badgeName ($count)",
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: Colors.brown.shade700,
+              ),
+            ),
+          ],
         ),
       );
     }).toList();

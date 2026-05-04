@@ -110,62 +110,102 @@ class _MessagesScreenState extends State<MessagesScreen> {
 
               // Conversations List
               Expanded(
-                child: StreamBuilder<QuerySnapshot>(
-                  stream: FirebaseFirestore.instance
-                      .collection('chats')
-                      .where('users', arrayContains: FirebaseAuth.instance.currentUser?.uid)
-                      .snapshots(),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
+                child: FutureBuilder<DocumentSnapshot>(
+                  future: FirebaseAuth.instance.currentUser != null 
+                    ? FirebaseFirestore.instance.collection('users').doc(FirebaseAuth.instance.currentUser!.uid).get()
+                    : null,
+                  builder: (context, userSnapshot) {
+                    if (userSnapshot.connectionState == ConnectionState.waiting) {
                       return const Center(child: CircularProgressIndicator());
                     }
-                    if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                      return Center(
-                        child: Text(
-                          "No active conversations yet.",
-                          style: TextStyle(color: Colors.grey.shade500),
-                        ),
-                      );
-                    }
                     
-                    final sortedDocs = snapshot.data!.docs.toList();
-                    sortedDocs.sort((a, b) {
-                      final aData = a.data() as Map<String, dynamic>;
-                      final bData = b.data() as Map<String, dynamic>;
-                      final aTime = aData['lastMessageTime'] as Timestamp?;
-                      final bTime = bData['lastMessageTime'] as Timestamp?;
-                      if (aTime == null || bTime == null) return 0;
-                      return bTime.compareTo(aTime);
-                    });
+                    List<String> blockedUsers = [];
+                    if (userSnapshot.hasData && userSnapshot.data != null && userSnapshot.data!.exists) {
+                      final data = userSnapshot.data!.data() as Map<String, dynamic>;
+                      if (data.containsKey('blockedUsers') && data['blockedUsers'] != null) {
+                        blockedUsers = List<String>.from(data['blockedUsers']);
+                      }
+                    }
 
-                    return ListView.separated(
-                      itemCount: sortedDocs.length,
-                      separatorBuilder: (context, index) => Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8.0),
-                        child: Divider(color: Colors.grey.shade100, height: 1),
-                      ),
-                      itemBuilder: (context, index) {
-                        final chatDoc = sortedDocs[index].data() as Map<String, dynamic>;
-                        final currentUid = FirebaseAuth.instance.currentUser?.uid;
+                    return StreamBuilder<QuerySnapshot>(
+                      stream: FirebaseFirestore.instance
+                          .collection('chats')
+                          .where('users', arrayContains: FirebaseAuth.instance.currentUser?.uid)
+                          .snapshots(),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return const Center(child: CircularProgressIndicator());
+                        }
+                        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                          return Center(
+                            child: Text(
+                              "No active conversations yet.",
+                              style: TextStyle(color: Colors.grey.shade500),
+                            ),
+                          );
+                        }
                         
-                        final users = List<dynamic>.from(chatDoc['users'] ?? []);
-                        users.remove(currentUid);
-                        final otherUid = users.isNotEmpty ? users.first : 'Unknown';
+                        final allDocs = snapshot.data!.docs.toList();
                         
-                        final convo = {
-                          "id": otherUid,
-                          "name": chatDoc['userName_$otherUid'] ?? "Unknown User",
-                          "photo": chatDoc['userPhoto_$otherUid'] ?? "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80",
-                          "message": chatDoc['lastMessage'] ?? "📎 Attached file",
-                          "time": _formatTime(chatDoc['lastMessageTime']),
-                          "unread": chatDoc['unread_$currentUid'] ?? 0,
-                          "isOnline": false,
-                        };
+                        // Filter out chats where the other user is blocked
+                        final filteredDocs = allDocs.where((doc) {
+                          final chatDoc = doc.data() as Map<String, dynamic>;
+                          final currentUid = FirebaseAuth.instance.currentUser?.uid;
+                          final users = List<dynamic>.from(chatDoc['users'] ?? []);
+                          users.remove(currentUid);
+                          final otherUid = users.isNotEmpty ? users.first : 'Unknown';
+                          
+                          return !blockedUsers.contains(otherUid);
+                        }).toList();
+
+                        if (filteredDocs.isEmpty) {
+                          return Center(
+                            child: Text(
+                              "No active conversations yet.",
+                              style: TextStyle(color: Colors.grey.shade500),
+                            ),
+                          );
+                        }
                         
-                        return _buildConversationItem(convo, textColor, subtitleColor, primaryColor);
+                        filteredDocs.sort((a, b) {
+                          final aData = a.data() as Map<String, dynamic>;
+                          final bData = b.data() as Map<String, dynamic>;
+                          final aTime = aData['lastMessageTime'] as Timestamp?;
+                          final bTime = bData['lastMessageTime'] as Timestamp?;
+                          if (aTime == null || bTime == null) return 0;
+                          return bTime.compareTo(aTime);
+                        });
+
+                        return ListView.separated(
+                          itemCount: filteredDocs.length,
+                          separatorBuilder: (context, index) => Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8.0),
+                            child: Divider(color: Colors.grey.shade100, height: 1),
+                          ),
+                          itemBuilder: (context, index) {
+                            final chatDoc = filteredDocs[index].data() as Map<String, dynamic>;
+                            final currentUid = FirebaseAuth.instance.currentUser?.uid;
+                            
+                            final users = List<dynamic>.from(chatDoc['users'] ?? []);
+                            users.remove(currentUid);
+                            final otherUid = users.isNotEmpty ? users.first : 'Unknown';
+                            
+                            final convo = {
+                              "id": otherUid,
+                              "name": chatDoc['userName_$otherUid'] ?? "Unknown User",
+                              "photo": chatDoc['userPhoto_$otherUid'] ?? "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80",
+                              "message": chatDoc['lastMessage'] ?? "📎 Attached file",
+                              "time": _formatTime(chatDoc['lastMessageTime']),
+                              "unread": chatDoc['unread_$currentUid'] ?? 0,
+                              "isOnline": false,
+                            };
+                            
+                            return _buildConversationItem(convo, textColor, subtitleColor, primaryColor);
+                          },
+                        );
                       },
                     );
-                  },
+                  }
                 ),
               ),
             ],
@@ -228,6 +268,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
           photo: convo['photo'],
           skillsTeach: "SKILL SWAPPER", // Fallback
           skillsLearn: "ACTIVE", // Fallback
+          coins: 3, // Fallback
         );
         Navigator.push(
           context,
@@ -241,27 +282,38 @@ class _MessagesScreenState extends State<MessagesScreen> {
         child: Row(
           children: [
             // Avatar with Online Badge
-            Stack(
-              children: [
-                CircleAvatar(
-                  radius: 28,
-                  backgroundImage: NetworkImage(convo['photo']),
-                ),
-                if (convo['isOnline'])
-                  Positioned(
-                    bottom: 0,
-                    right: 0,
-                    child: Container(
-                      width: 14,
-                      height: 14,
-                      decoration: BoxDecoration(
-                        color: Colors.green,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 2),
-                      ),
+            StreamBuilder<DocumentSnapshot>(
+              stream: FirebaseFirestore.instance.collection('users').doc(convo['id']).snapshots(),
+              builder: (context, snapshot) {
+                bool isOnline = false;
+                if (snapshot.hasData && snapshot.data?.exists == true) {
+                  final data = snapshot.data!.data() as Map<String, dynamic>?;
+                  isOnline = data?['isOnline'] ?? false;
+                }
+                
+                return Stack(
+                  children: [
+                    CircleAvatar(
+                      radius: 28,
+                      backgroundImage: NetworkImage(convo['photo']),
                     ),
-                  ),
-              ],
+                    if (isOnline)
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: Container(
+                          width: 14,
+                          height: 14,
+                          decoration: BoxDecoration(
+                            color: Colors.green,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 2),
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              }
             ),
             const SizedBox(width: 15),
             

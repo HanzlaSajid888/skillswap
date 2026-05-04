@@ -3,6 +3,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'main.dart'; // For LoginScreen
 import 'profile_setup_screen.dart'; // For Edit Profile
+import 'availability_screen.dart';
+import 'privacy_security_screen.dart';
+import 'help_support_screen.dart';
+import 'about_screen.dart';
+import 'invite_friends_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -140,6 +145,96 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               const SizedBox(height: 30),
 
+              // --- SKILL COINS BALANCE CARD ---
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.indigo.shade600, Colors.indigo.shade400],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.indigo.withOpacity(0.3),
+                      blurRadius: 10,
+                      offset: const Offset(0, 5),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          "CURRENT BALANCE",
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 1.5,
+                          ),
+                        ),
+                        Icon(Icons.bolt, color: Colors.yellow.shade400, size: 28), // Made bigger
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.baseline,
+                      textBaseline: TextBaseline.alphabetic,
+                      children: [
+                        Text(
+                          "${userData?['coins'] ?? 3}",
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 36,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        const Text(
+                          "Skill Coins",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          "Coin Level",
+                          style: TextStyle(color: Colors.white70, fontSize: 11),
+                        ),
+                        Text(
+                          (userData?['coins'] ?? 3) >= 3 ? "Full" : ((userData?['coins'] ?? 3) > 0 ? "Low" : "Empty"),
+                          style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: LinearProgressIndicator(
+                        value: (((userData?['coins'] ?? 3) as int).toDouble() / 3.0).clamp(0.0, 1.0) * 0.95, // Leaves a bit of space even at max
+                        backgroundColor: Colors.white24,
+                        valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                        minHeight: 4,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 30),
+
               // Account Settings Section
               Text(
                 "ACCOUNT SETTINGS",
@@ -183,6 +278,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     _buildDivider(),
                     _buildSettingsTile(
+                      icon: Icons.access_time,
+                      iconColor: Colors.blue,
+                      iconBgColor: Colors.blue.shade50,
+                      title: "My Availability",
+                      textColor: textColor,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const AvailabilityScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    _buildDivider(),
+                    _buildSettingsTile(
                       icon: Icons.notifications_none,
                       iconColor: Colors.orange,
                       iconBgColor: Colors.orange.shade50,
@@ -197,7 +308,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       iconBgColor: Colors.teal.shade50,
                       title: "Privacy & Security",
                       textColor: textColor,
-                      onTap: () {},
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const PrivacySecurityScreen(),
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -236,7 +354,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       iconBgColor: Colors.purple.shade50,
                       title: "Invite Friends",
                       textColor: textColor,
-                      onTap: () {},
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const InviteFriendsScreen(),
+                          ),
+                        );
+                      },
                     ),
                     _buildDivider(),
                     _buildSettingsTile(
@@ -245,7 +370,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       iconBgColor: Colors.blue.shade50,
                       title: "Help & Support",
                       textColor: textColor,
-                      onTap: () {},
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const HelpSupportScreen(),
+                          ),
+                        );
+                      },
                     ),
                     _buildDivider(),
                     _buildSettingsTile(
@@ -254,7 +386,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       iconBgColor: Colors.grey.shade100,
                       title: "About Skillora",
                       textColor: textColor,
-                      onTap: () {},
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const AboutScreen(),
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),

@@ -29,6 +29,20 @@ class _TeachSkillsScreenState extends State<TeachSkillsScreen> {
 
   List<String> selectedSkills = [];
 
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = "";
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  List<String> get _filteredSkills {
+    if (_searchQuery.isEmpty) return skills;
+    return skills.where((s) => s.toLowerCase().contains(_searchQuery.toLowerCase())).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -88,7 +102,80 @@ class _TeachSkillsScreenState extends State<TeachSkillsScreen> {
                         style: TextStyle(fontSize: 15, color: Colors.grey),
                       ),
 
-                      const SizedBox(height: 30),
+                      const SizedBox(height: 20),
+
+                      TextField(
+                        controller: _searchController,
+                        onChanged: (val) {
+                          setState(() {
+                            _searchQuery = val.trim();
+                          });
+                        },
+                        decoration: InputDecoration(
+                          hintText: "Search or add a custom skill...",
+                          prefixIcon: const Icon(Icons.search),
+                          suffixIcon: _searchQuery.isNotEmpty 
+                            ? IconButton(
+                                icon: const Icon(Icons.clear), 
+                                onPressed: () {
+                                  _searchController.clear();
+                                  setState(() {
+                                    _searchQuery = "";
+                                  });
+                                }
+                              ) 
+                            : null,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: Colors.grey.shade300),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: Colors.grey.shade300),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: Colors.indigo),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                      ),
+                      const SizedBox(height: 15),
+
+                      if (_searchQuery.isNotEmpty && !_filteredSkills.any((s) => s.toLowerCase() == _searchQuery.toLowerCase()))
+                        GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              skills.insert(0, _searchQuery);
+                              selectedSkills.add(_searchQuery);
+                              _searchQuery = "";
+                              _searchController.clear();
+                            });
+                            // Unfocus keyboard
+                            FocusScope.of(context).unfocus();
+                          },
+                          child: Container(
+                            margin: const EdgeInsets.only(bottom: 15),
+                            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                            decoration: BoxDecoration(
+                              color: Colors.indigo.shade50,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.indigo.shade200),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.add_circle, color: Colors.indigo),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    "Add '$_searchQuery'",
+                                    style: const TextStyle(color: Colors.indigo, fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
 
                       GridView.builder(
                         shrinkWrap: true,
@@ -99,9 +186,9 @@ class _TeachSkillsScreenState extends State<TeachSkillsScreen> {
                           mainAxisSpacing: 15,
                           childAspectRatio: 2.8,
                         ),
-                        itemCount: skills.length,
+                        itemCount: _filteredSkills.length,
                         itemBuilder: (context, index) {
-                          final skill = skills[index];
+                          final skill = _filteredSkills[index];
                           final isSelected = selectedSkills.contains(skill);
 
                           return ChoiceChip(
