@@ -313,7 +313,7 @@ class HelpSupportScreen extends StatelessWidget {
                                         if (outerContext.mounted) {
                                           ScaffoldMessenger.of(outerContext).showSnackBar(
                                             SnackBar(
-                                              content: const Text("Failed to submit rating. Please try again."),
+                                              content: Text("Failed to submit rating: $e"),
                                               backgroundColor: Colors.red.shade600,
                                               behavior: SnackBarBehavior.floating,
                                             ),

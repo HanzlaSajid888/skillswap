@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'settings_screen.dart';
 import 'learning_dashboard_screen.dart';
 import 'leaderboard_screen.dart';
@@ -26,20 +27,24 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
 
   Future<void> _fetchLatestUser() async {
     try {
-      final snapshot = await FirebaseFirestore.instance
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid == null) {
+        setState(() => isLoading = false);
+        return;
+      }
+
+      final docSnapshot = await FirebaseFirestore.instance
           .collection('users')
-          .orderBy('createdAt', descending: true)
-          .limit(1)
+          .doc(uid)
           .get();
 
-      if (snapshot.docs.isNotEmpty) {
-        final doc = snapshot.docs.first;
-        final data = doc.data();
+      if (docSnapshot.exists) {
+        final data = docSnapshot.data();
 
         // Fetch latest review for this user
         final reviewSnapshot = await FirebaseFirestore.instance
             .collection('users')
-            .doc(doc.id)
+            .doc(uid)
             .collection('reviews')
             .orderBy('timestamp', descending: true)
             .limit(1)

@@ -181,6 +181,68 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
+  Widget _buildCallBubble(Map<String, dynamic> msg, bool isMe) {
+    final type = msg['type'];
+    final isVideo = type == 'video_call';
+    final text = msg['text'] ?? '';
+
+    return Align(
+      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 5),
+        padding: const EdgeInsets.all(12),
+        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
+        decoration: BoxDecoration(
+          color: isMe ? Colors.indigo.shade50 : Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(15),
+          border: Border.all(color: isMe ? Colors.indigo.shade200 : Colors.grey.shade300),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(isVideo ? Icons.videocam : Icons.phone, size: 16, color: Colors.indigo.shade400),
+                const SizedBox(width: 6),
+                Text(
+                  isVideo ? "Video Call" : "Audio Call", 
+                  style: TextStyle(fontWeight: FontWeight.bold, color: Colors.indigo.shade900)
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(text, style: const TextStyle(fontSize: 14)),
+            const SizedBox(height: 12),
+            ElevatedButton.icon(
+              onPressed: () {
+                final user = FirebaseAuth.instance.currentUser;
+                if (user == null) return;
+                final callId = _getChatId(user.uid, widget.chatUser.id);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => CallScreen(
+                      callID: callId,
+                      isVideo: isVideo,
+                    ),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.call, size: 16, color: Colors.white),
+              label: const Text("Join Call", style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                minimumSize: const Size(double.infinity, 36),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+
   void _pickGallery() async {
     final ImagePicker picker = ImagePicker();
     final XFile? image = await picker.pickImage(source: ImageSource.gallery);
@@ -390,10 +452,10 @@ class _ChatScreenState extends State<ChatScreen> {
           
           if (type == 'video_call') {
             notifTitle = "Incoming Video Call 🎥";
-            notifBody = "from $senderName";
+            notifBody = "from $senderName. Tap here to join!";
           } else if (type == 'audio_call') {
             notifTitle = "Incoming Audio Call 📞";
-            notifBody = "from $senderName";
+            notifBody = "from $senderName. Tap here to join!";
           }
           
           NotificationService.sendNotification(fcmToken, notifTitle, notifBody);
@@ -942,6 +1004,8 @@ class _ChatScreenState extends State<ChatScreen> {
 
                               return (type == 'session_request' || type == 'session_accepted' || type == 'session_rejected')
                                 ? _buildSessionBubble(msg, currentMsgDoc.reference, isMe)
+                                : (type == 'video_call' || type == 'audio_call')
+                                  ? _buildCallBubble(msg, isMe)
                                 : type == 'audio' && mediaUrl != null
                                   ? AudioMessageBubble(
                                     audioUrl: mediaUrl,

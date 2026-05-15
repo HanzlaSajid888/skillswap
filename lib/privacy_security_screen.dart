@@ -289,42 +289,80 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> with Widg
                   icon: Icons.password, iconColor: Colors.deepPurple, iconBgColor: Colors.deepPurple.shade50,
                   title: "Change Password", subtitle: "Update your login password", 
                   trailing: const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
-                  onTap: () async {
+                  onTap: () {
                     final user = FirebaseAuth.instance.currentUser;
-                    if (user != null && user.email != null) {
-                      try {
-                        await FirebaseAuth.instance.sendPasswordResetEmail(email: user.email!);
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text("Password reset link sent to ${user.email}"),
-                              backgroundColor: Colors.green.shade600,
-                              behavior: SnackBarBehavior.floating,
+                    TextEditingController emailController = TextEditingController(text: user?.email ?? '');
+                    showDialog(
+                      context: context,
+                      builder: (dialogContext) {
+                        return AlertDialog(
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          title: const Text("Reset Password", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                          content: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text("Enter your email address to receive a password reset link.", style: TextStyle(fontSize: 14)),
+                              const SizedBox(height: 15),
+                              TextField(
+                                controller: emailController,
+                                keyboardType: TextInputType.emailAddress,
+                                decoration: InputDecoration(
+                                  labelText: "Email",
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                ),
+                              ),
+                            ],
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(dialogContext),
+                              child: const Text("Cancel", style: TextStyle(color: Colors.grey)),
                             ),
-                          );
-                        }
-                      } catch (e) {
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text("Error: ${e.toString()}"),
-                              backgroundColor: Colors.red.shade600,
-                              behavior: SnackBarBehavior.floating,
+                            ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.deepPurple,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              ),
+                              onPressed: () async {
+                                final email = emailController.text.trim();
+                                if (email.isEmpty) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: const Text("Email cannot be empty"), backgroundColor: Colors.red.shade600)
+                                  );
+                                  return;
+                                }
+                                Navigator.pop(dialogContext); // Close dialog
+                                
+                                try {
+                                  await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text("Password reset link sent to $email"),
+                                        backgroundColor: Colors.green.shade600,
+                                        behavior: SnackBarBehavior.floating,
+                                      ),
+                                    );
+                                  }
+                                } catch (e) {
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text("Error: ${e.toString()}"),
+                                        backgroundColor: Colors.red.shade600,
+                                        behavior: SnackBarBehavior.floating,
+                                      ),
+                                    );
+                                  }
+                                }
+                              },
+                              child: const Text("Send Link", style: TextStyle(color: Colors.white)),
                             ),
-                          );
-                        }
+                          ],
+                        );
                       }
-                    } else {
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: const Text("Only email users can change passwords."),
-                              backgroundColor: Colors.red.shade600,
-                              behavior: SnackBarBehavior.floating,
-                            ),
-                          );
-                        }
-                    }
+                    );
                   }
                 ),
               ]),

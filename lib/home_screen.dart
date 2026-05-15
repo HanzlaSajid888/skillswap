@@ -363,11 +363,14 @@ class _FinalPageState extends State<FinalPage> with TickerProviderStateMixin, Wi
           children: [
             IconButton(
               icon: Icon(Icons.search, color: Colors.grey.shade400, size: 28),
-              onPressed: () {
-                showSearch(
+              onPressed: () async {
+                final selectedUser = await showSearch<UserProfile?>(
                   context: context,
                   delegate: UserSearchDelegate(),
                 );
+                if (selectedUser != null && context.mounted) {
+                  _showSearchedUserDialog(context, selectedUser);
+                }
               },
             ),
             IconButton(
@@ -391,6 +394,50 @@ class _FinalPageState extends State<FinalPage> with TickerProviderStateMixin, Wi
           ],
         ),
       ),
+    );
+  }
+
+  void _showSearchedUserDialog(BuildContext context, UserProfile user) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(child: _buildCard(user)),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  FloatingActionButton(
+                    heroTag: "reject_search_${user.id}",
+                    backgroundColor: Colors.red.shade100,
+                    elevation: 0,
+                    onPressed: () {
+                      Navigator.pop(dialogContext);
+                      _processSwipe(user, false);
+                    },
+                    child: const Icon(Icons.close, color: Colors.red),
+                  ),
+                  FloatingActionButton(
+                    heroTag: "accept_search_${user.id}",
+                    backgroundColor: Colors.green.shade100,
+                    elevation: 0,
+                    onPressed: () {
+                      Navigator.pop(dialogContext);
+                      _processSwipe(user, true);
+                    },
+                    child: const Icon(Icons.favorite, color: Colors.green),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      }
     );
   }
 
@@ -653,8 +700,12 @@ class _FinalPageState extends State<FinalPage> with TickerProviderStateMixin, Wi
                           'reviewCount': reviewCount + 1,
                         };
                         
+                        Map<String, dynamic> currentBadges = data['badges'] != null ? Map<String, dynamic>.from(data['badges']) : {};
+                        
                         if (selectedBadge != null) {
-                          updates['badges.$selectedBadge'] = FieldValue.increment(1);
+                          String badgeKey = selectedBadge!;
+                          currentBadges[badgeKey] = (currentBadges[badgeKey] ?? 0) + 1;
+                          updates['badges'] = currentBadges;
                         }
                         
                         transaction.update(userRef, updates);
@@ -718,7 +769,7 @@ class _FinalPageState extends State<FinalPage> with TickerProviderStateMixin, Wi
   }
 }
 
-class UserSearchDelegate extends SearchDelegate {
+class UserSearchDelegate extends SearchDelegate<UserProfile?> {
   UserSearchDelegate();
 
   void _saveSearchQuery() async {
@@ -809,43 +860,72 @@ class UserSearchDelegate extends SearchDelegate {
   }
 
   Widget _buildSuggestionsOrResults() {
-    return Consumer<UserProvider>(
-      builder: (context, provider, child) {
-        if (provider.isLoading) {
+    final queryLower = query.toLowerCase().trim();
+    if (queryLower.isEmpty) return const SizedBox.shrink();
+
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance.collection('users').snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
 
-        final users = provider.users;
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const Center(child: Text('No users found.'));
+        }
 
-        final matches = users.where((user) {
-          final nameLower = user.name.toLowerCase();
-          final teachesLower = user.skillsTeach.toLowerCase();
-          final wantsLower = user.skillsLearn.toLowerCase();
-          final queryLower = query.toLowerCase();
+        final allUsersDocs = snapshot.data!.docs;
+        final currentUid = FirebaseAuth.instance.currentUser?.uid;
+
+        final matches = allUsersDocs.where((doc) {
+          if (doc.id == currentUid) return false;
+          final data = doc.data() as Map<String, dynamic>;
+          final nameLower = (data['name'] ?? '').toString().toLowerCase();
+          final teachesLower = data.containsKey('teachSkills') 
+              ? ((data['teachSkills'] as List?)?.join(', ') ?? '').toLowerCase() 
+              : '';
+          final wantsLower = data.containsKey('learnSkills') 
+              ? ((data['learnSkills'] as List?)?.join(', ') ?? '').toLowerCase() 
+              : '';
 
           return nameLower.contains(queryLower) ||
-              teachesLower.contains(queryLower) ||
-              wantsLower.contains(queryLower);
+                 teachesLower.contains(queryLower) ||
+                 wantsLower.contains(queryLower);
         }).toList();
 
         if (matches.isEmpty) {
-          return const Center(child: Text('No users found.'));
+          return const Center(child: Text('No users found for this search.'));
         }
 
         return ListView.builder(
           itemCount: matches.length,
           itemBuilder: (context, index) {
-            final user = matches[index];
+            final doc = matches[index];
+            final data = doc.data() as Map<String, dynamic>;
+            final photo = data['photo'] ?? 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=400&q=80';
+            final name = data['name'] ?? 'Unknown';
+            final skillsTeach = data.containsKey('teachSkills') ? ((data['teachSkills'] as List?)?.join(', ') ?? '') : '';
+            final skillsLearn = data.containsKey('learnSkills') ? ((data['learnSkills'] as List?)?.join(', ') ?? '') : '';
+
             return ListTile(
               leading: CircleAvatar(
-                backgroundImage: NetworkImage(user.photo),
+                backgroundImage: NetworkImage(photo),
               ),
-              title: Text(user.name),
-              subtitle: Text("Teaches: ${user.skillsTeach}\nWants: ${user.skillsLearn}"),
+              title: Text(name),
+              subtitle: Text("Teaches: $skillsTeach\nWants: $skillsLearn"),
               isThreeLine: true,
               onTap: () {
                 _saveSearchQuery();
-                close(context, null);
+                final userProfile = UserProfile(
+                  id: doc.id,
+                  name: name,
+                  age: data['age'] ?? 0,
+                  photo: photo,
+                  skillsTeach: skillsTeach,
+                  skillsLearn: skillsLearn,
+                  coins: data['coins'] ?? 3,
+                );
+                close(context, userProfile);
               },
             );
           },

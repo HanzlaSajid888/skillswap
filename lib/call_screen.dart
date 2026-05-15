@@ -45,9 +45,16 @@ class _CallScreenState extends State<CallScreen> {
       } catch (e) {
         debugPrint("Error fetching name: $e");
       }
+      
+      if (user.email != null && user.email!.isNotEmpty) {
+        setState(() {
+          _userName = user.email!.split('@').first;
+        });
+        return;
+      }
     }
     setState(() {
-      _userName = "User_${_userID.substring(0, 5)}";
+      _userName = "User";
     });
   }
 
