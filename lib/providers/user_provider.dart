@@ -36,8 +36,9 @@ class UserProvider extends ChangeNotifier {
       QuerySnapshot snapshot = await FirebaseFirestore.instance.collection("users").get();
       
       _users = snapshot.docs.where((doc) {
-        // Exclude current user from the swiping list, and exclude any blocked/swiped users
-        return doc.id != currentUser?.uid && !swipedAndBlocked.contains(doc.id);
+        // Exclude current user from the swiping list.
+        // NOTE: Temporarily allowing previously swiped users to show up for testing purposes.
+        return doc.id != currentUser?.uid; // && !swipedAndBlocked.contains(doc.id);
       }).map((doc) {
         final data = doc.data() as Map<String, dynamic>;
         return UserProfile(

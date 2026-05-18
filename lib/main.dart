@@ -12,6 +12,9 @@ import 'profile_setup_screen.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'utils/notification_service.dart';
 import 'signup_screen.dart';
+import 'package:zego_uikit_prebuilt_call/zego_uikit_prebuilt_call.dart';
+
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -23,6 +26,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  
   await NotificationService.init();
   runApp(const MyApp());
 }
@@ -37,6 +41,19 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => UserProvider()),
       ],
       child: MaterialApp(
+        navigatorKey: navigatorKey,
+        builder: (BuildContext context, Widget? child) {
+          return Stack(
+            children: [
+              child!,
+              ZegoUIKitPrebuiltCallMiniOverlayPage(
+                contextQuery: () {
+                  return navigatorKey.currentState!.context;
+                },
+              ),
+            ],
+          );
+        },
         title: 'Skillora',
         debugShowCheckedModeBanner: false,
         home: const SplashScreen(),

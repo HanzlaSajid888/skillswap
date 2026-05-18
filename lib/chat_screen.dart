@@ -11,10 +11,12 @@ import 'dart:async';
 import 'home_screen.dart'; // To get UserProfile
 import 'schedule_session_screen.dart';
 import 'models/user_profile.dart';
-import 'call_screen.dart';    // Added CallScreen import
+import 'package:zego_uikit_prebuilt_call/zego_uikit_prebuilt_call.dart';
 import 'widgets/audio_message_bubble.dart';
 import 'utils/cloudinary_helper.dart'; // Added Cloudinary Helper
 import 'utils/notification_service.dart'; // Added Notification Service
+import 'models/call_model.dart';
+import 'screens/outgoing_call_screen.dart';
 
 enum SkillStatus { none, inProgress, delivered, stoppedTeaching, stoppedLearning }
 
@@ -51,7 +53,7 @@ class _ChatScreenState extends State<ChatScreen> {
   void _listenToSessionStatus() {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
-    
+
     final chatId = _getChatId(user.uid, widget.chatUser.id);
     _chatSubscription = FirebaseFirestore.instance.collection('chats').doc(chatId).snapshots().listen((doc) {
       if (doc.exists && doc.data() != null) {
@@ -95,6 +97,104 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildManualCallOption(bool isVideo) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        InkWell(
+          onTap: () async {
+            Navigator.pop(context); // close bottom sheet
+            
+            final user = FirebaseAuth.instance.currentUser;
+            if (user == null) return;
+            
+            // 1. Send push notification to receiver
+            final targetUserDoc = await FirebaseFirestore.instance.collection('users').doc(widget.chatUser.id).get();
+            if (targetUserDoc.exists) {
+              final targetData = targetUserDoc.data() as Map<String, dynamic>;
+              final fcmToken = targetData['fcmToken'] as String?;
+              
+              if (fcmToken != null && fcmToken.isNotEmpty) {
+                NotificationService.sendNotification(
+                  fcmToken,
+                  isVideo ? "Incoming Video Call 🎥" : "Incoming Audio Call 📞",
+                  "${user.displayName ?? 'Someone'} is calling you!"
+                );
+              }
+            }
+
+            // 2. Generate a random call ID and create document
+            final callID = DateTime.now().millisecondsSinceEpoch.toString();
+            final callModel = CallModel(
+              id: callID,
+              callerId: user.uid,
+              callerName: user.displayName ?? "User",
+              callerPhotoUrl: user.photoURL ?? "", // Note: assuming we have it, or fetch from Firestore
+              receiverId: widget.chatUser.id,
+              status: 'ringing',
+              isVideo: isVideo,
+              timestamp: Timestamp.now(),
+            );
+            
+            // fetch caller photo from Firestore
+            final myDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+            String myPhoto = "";
+            if (myDoc.exists && myDoc.data()!.containsKey('photo')) {
+              myPhoto = myDoc.data()!['photo'];
+            }
+            
+            final callModelWithPhoto = CallModel(
+              id: callID,
+              callerId: user.uid,
+              callerName: user.displayName ?? "User",
+              callerPhotoUrl: myPhoto,
+              receiverId: widget.chatUser.id,
+              status: 'ringing',
+              isVideo: isVideo,
+              timestamp: Timestamp.now(),
+            );
+
+            await FirebaseFirestore.instance.collection('calls').doc(callID).set(callModelWithPhoto.toMap());
+
+            // 3. Send a message in chat
+            _sendMessage(
+              predefinedText: isVideo ? "🎥 Video Call Started" : "📞 Audio Call Started",
+              type: isVideo ? 'video_call' : 'audio_call'
+            );
+
+            // 4. Navigate to Outgoing Call Screen
+            if (mounted) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => OutgoingCallScreen(call: callModelWithPhoto),
+                ),
+              );
+            }
+          },
+          child: Container(
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              color: isVideo ? Colors.indigo.shade50 : Colors.green.shade50,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              isVideo ? Icons.videocam : Icons.call,
+              color: isVideo ? Colors.indigo : Colors.green,
+              size: 30,
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          isVideo ? "Video Call" : "Audio Call",
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.black87),
+        ),
+      ],
     );
   }
 
@@ -213,28 +313,10 @@ class _ChatScreenState extends State<ChatScreen> {
             const SizedBox(height: 8),
             Text(text, style: const TextStyle(fontSize: 14)),
             const SizedBox(height: 12),
-            ElevatedButton.icon(
-              onPressed: () {
-                final user = FirebaseAuth.instance.currentUser;
-                if (user == null) return;
-                final callId = _getChatId(user.uid, widget.chatUser.id);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => CallScreen(
-                      callID: callId,
-                      isVideo: isVideo,
-                    ),
-                  ),
-                );
-              },
-              icon: const Icon(Icons.call, size: 16, color: Colors.white),
-              label: const Text("Join Call", style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
-                minimumSize: const Size(double.infinity, 36),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              ),
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+              decoration: BoxDecoration(color: Colors.indigo.shade100, borderRadius: BorderRadius.circular(8)),
+              child: const Text("Call log", style: TextStyle(color: Colors.indigo, fontWeight: FontWeight.bold, fontSize: 12)),
             ),
           ],
         ),
@@ -284,28 +366,6 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  void _startCall(bool isVideo) {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-    
-    final callId = _getChatId(user.uid, widget.chatUser.id);
-    
-    // Send a message to Firebase stating that a call was initiated
-    _sendMessage(
-      predefinedText: isVideo ? "🎥 Video Call Started" : "📞 Audio Call Started",
-      type: isVideo ? 'video_call' : 'audio_call'
-    );
-    
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => CallScreen(
-          callID: callId,
-          isVideo: isVideo,
-        ),
-      ),
-    );
-  }
 
   Future<void> _startRecording() async {
     try {
@@ -712,8 +772,8 @@ class _ChatScreenState extends State<ChatScreen> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                           children: [
-                            _buildAttachmentOption(Icons.phone, Colors.green, "Audio Call", () => _startCall(false)),
-                            _buildAttachmentOption(Icons.videocam, Colors.blue, "Video Call", () => _startCall(true)),
+                            _buildManualCallOption(false),
+                            _buildManualCallOption(true),
                           ],
                         ),
                       ),

@@ -11,7 +11,9 @@ import 'messages_screen.dart'; // Add Messages screen import
 import 'package:provider/provider.dart';
 import 'providers/user_provider.dart';
 import 'models/user_profile.dart';
-import 'utils/notification_service.dart'; // Add Notification Service
+import 'utils/notification_service.dart';
+import 'services/call_service.dart';
+import 'package:zego_uikit_prebuilt_call/zego_uikit_prebuilt_call.dart';
 
 final FirebaseFirestore firestore = FirebaseFirestore.instance;
 
@@ -121,6 +123,8 @@ class _FinalPageState extends State<FinalPage> with TickerProviderStateMixin, Wi
     }
   }
 
+
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
@@ -135,6 +139,9 @@ class _FinalPageState extends State<FinalPage> with TickerProviderStateMixin, Wi
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _updateOnlineStatus(true);
+    
+    // Initialize custom call service to listen for incoming calls
+    CallService().init(navigatorKey);
     
     _slideController = AnimationController(
        vsync: this, 
@@ -333,7 +340,7 @@ class _FinalPageState extends State<FinalPage> with TickerProviderStateMixin, Wi
                         // Match logic will now trigger automatically inside onSwipeEnd
                       }
                     },
-                    child: CircleAvatar(
+                    child: CircleAvatar( 
                       radius: 28,
                       backgroundColor: Colors.green.shade100,
                       child: const Icon(Icons.favorite, color: Colors.green),

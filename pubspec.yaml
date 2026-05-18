@@ -55,8 +55,7 @@ dependencies:
   flutter_local_notifications: ^20.1.0
   googleapis_auth: ^2.0.0
 
-dependency_overrides:
-  zego_zim: 2.27.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
