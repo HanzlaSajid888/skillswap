@@ -1,36 +1,49 @@
-# 🔄 SkillSwap — Exchange Skills, Not Money
+[readme so.md](https://github.com/user-attachments/files/28172048/readme.so.md)
+# 📚 Skillora — Skill Exchange Platform
 
-<p align="center">
-  <img src="https://img.shields.io/badge/Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white" />
-  <img src="https://img.shields.io/badge/Dart-0175C2?style=for-the-badge&logo=dart&logoColor=white" />
-  <img src="https://img.shields.io/badge/Firebase-FFCA28?style=for-the-badge&logo=firebase&logoColor=black" />
-  <img src="https://img.shields.io/badge/ZegoCloud-0055FF?style=for-the-badge&logo=zoom&logoColor=white" />
-  <img src="https://img.shields.io/badge/Cloudinary-3448C5?style=for-the-badge&logo=cloudinary&logoColor=white" />
-</p>
+> **Learn • Teach • Grow**
 
-<p align="center">
-  <b>A skill exchange platform where users teach what they know and learn what they need — no money involved!</b>
-</p>
+A full-featured skill exchange mobile app built with **Flutter & Firebase**. Connect with people who want to learn what you know, and teach what you want to learn — no money, just skills!
 
 ---
 
-## 💡 The Idea
+## 📱 Screenshots
 
-> **"I'll teach you Flutter if you teach me React."**
+| Login | Teach Skills | Learn Skills | Messages |
+|---|---|---|---|
+| ![Login](screenshots/skillora_login.jpeg) | ![Teach](screenshots/skillora_teach.jpeg) | ![Learn](screenshots/skillora_learn.jpeg) | ![Messages](screenshots/skillora_messages.jpeg) |
 
-SkillSwap is a mobile app that connects people who want to **exchange skills** with each other. No money. No tutoring fees. Just pure knowledge exchange — you teach what you know, you learn what you need.
+| Schedule Session | Chat | Match Card | It's a Match! |
+|---|---|---|---|
+| ![Schedule](screenshots/skillora_schedule.jpeg) | ![Chat](screenshots/skillora_chat.jpeg) | ![Match Card](screenshots/skillora_match_card.jpeg) | ![Match](screenshots/skillora_its_a_match.jpeg) |
+
+| Call Options | Profile | Receive Skill |
+|---|---|---|
+| ![Call](screenshots/skillora_call.jpeg) | ![Profile](screenshots/skillora_profile.jpeg) | ![Receive](screenshots/skillora_receive_skill.jpeg) |
 
 ---
 
-## ✨ Key Features
+## ✨ Features
 
-- 🔍 **Smart Matching System** — Matches users based on skills they offer and skills they need
-- ❤️ **Like & Match** — Both users like each other's profile = Match confirmed
-- 💬 **Real-Time Chat** — Chat instantly after matching
-- 📹 **Video Calling** — Learn face-to-face via ZegoCloud integration
-- 🖼️ **Profile with Portfolio** — Upload your work via Cloudinary
-- 🔐 **Firebase Auth** — Secure login & authentication
-- ☁️ **Firebase Firestore** — Real-time database for matches & messages
+### 👤 User Side
+- 🔐 Sign Up / Sign In with Firebase Auth & Google Sign-In
+- 🎯 Onboarding — select skills to learn & skills to teach
+- 🏠 Home Screen with skill matches
+- 🤝 Skill Matching System — find your perfect learning partner
+- 💬 Real-time Chat with audio messages
+- 📹 Video & Audio Calling (Zego UIKit)
+- 📅 Session Scheduling — book learning sessions with date & time
+- 📊 Learning Dashboard — track your progress
+- 🏆 Leaderboard — top learners & teachers
+- 🔔 Push Notifications (Firebase Messaging)
+- 👥 Invite Friends
+- ⚙️ Settings, Privacy & Security
+- ℹ️ About, FAQ & Help Support
+
+### 🛠️ Additional
+- 🖼️ Cloudinary image uploads
+- 📖 App Guide & Walkthrough screens
+- 🌐 Availability scheduling
 
 ---
 
@@ -38,59 +51,120 @@ SkillSwap is a mobile app that connects people who want to **exchange skills** w
 
 | Technology | Usage |
 |---|---|
-| **Flutter & Dart** | Cross-platform mobile app |
-| **Firebase Auth** | User authentication |
-| **Firebase Firestore** | Real-time database |
-| **ZegoCloud** | Video calling feature |
-| **Cloudinary** | Image & media uploads |
+| Flutter | UI Framework |
+| Dart | Programming Language |
+| Firebase Auth | User Authentication |
+| Cloud Firestore | Real-time Database |
+| Firebase Messaging | Push Notifications |
+| Google Sign-In | OAuth Authentication |
+| Zego UIKit | Video & Audio Calling |
+| Cloudinary | Image Storage |
+| Provider | State Management |
 
 ---
 
-## 🚀 How It Works
+## 🚀 Getting Started
 
-1. **Create Profile** — Add skills you can teach + skills you want to learn
-2. **Browse Users** — See people with matching skill needs
-3. **Like & Match** — Both like each other = It's a Match! 🎉
-4. **Connect** — Chat or Video call to start learning
-5. **Exchange** — Teach & Learn simultaneously — no money needed!
+### Prerequisites
+- Flutter SDK
+- Dart SDK
+- Firebase project setup
+- Zego account (for calling)
+- Cloudinary account (for image uploads)
+- Android Studio / VS Code
 
----
+### Installation
 
-## 📱 Screenshots
-
-> Coming Soon...
-
----
-
-## 🔧 Installation & Setup
-
+1. **Clone the repository**
 ```bash
-# Clone the repository
-git clone https://github.com/HanzlaSajid888/skillswap.git
+git clone https://github.com/HanzlaSajid888/skillora.git
+cd skillora
+```
 
-# Navigate to project
-cd skillswap
-
-# Install dependencies
+2. **Install dependencies**
+```bash
 flutter pub get
+```
 
-# Run the app
+3. **Firebase Setup**
+   - Create a Firebase project at [console.firebase.google.com](https://console.firebase.google.com)
+   - Enable **Authentication** (Email/Password + Google)
+   - Enable **Cloud Firestore**
+   - Enable **Firebase Messaging**
+   - Download `google-services.json` and place it in `android/app/`
+
+4. **Zego Setup**
+   - Create an account at [zegocloud.com](https://www.zegocloud.com)
+   - Get your App ID & App Sign
+   - Add them to your project config
+
+5. **Run the app**
+```bash
 flutter run
 ```
 
 ---
 
-## 👨‍💻 Developer
+## 📁 Project Structure
 
-**Hanzla Sajid**
-Flutter Developer | UOG'27
-
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/hanzla-sajid-flutter/)
-[![Instagram](https://img.shields.io/badge/Instagram-E4405F?style=for-the-badge&logo=instagram&logoColor=white)](https://www.instagram.com/hanzlasajid_0/)
-[![GitHub](https://img.shields.io/badge/GitHub-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/HanzlaSajid888)
+```
+lib/
+├── models/
+│   ├── user_profile.dart
+│   └── call_model.dart
+├── providers/
+│   └── user_provider.dart
+├── screens/
+│   ├── call_screen.dart
+│   ├── incoming_call_screen.dart
+│   └── outgoing_call_screen.dart
+├── services/
+│   └── call_service.dart
+├── utils/
+│   ├── cloudinary_helper.dart
+│   └── notification_service.dart
+├── walkthrough/
+│   └── walkthrough_screen.dart
+├── widgets/
+│   └── audio_message_bubble.dart
+├── home_screen.dart
+├── chat_screen.dart
+├── match_screen.dart
+├── leaderboard_screen.dart
+├── messages_screen.dart
+├── schedule_session_screen.dart
+├── learn_skills_screen.dart
+├── teach_skills_screen.dart
+├── learning_dashboard_screen.dart
+├── availability_screen.dart
+├── profile_setup_screen.dart
+├── personal_info_screen.dart
+├── settings_screen.dart
+├── privacy_security_screen.dart
+├── help_support_screen.dart
+├── about_screen.dart
+├── faq_screen.dart
+├── app_guide_screen.dart
+├── invite_friends_screen.dart
+├── signup_screen.dart
+├── welcome_screen.dart
+├── splash_screen.dart
+└── main.dart
+```
 
 ---
 
-<p align="center">
-  <i>Built with ❤️ by Hanzla Sajid — Learning • Building • Growing 🚀</i>
-</p>
+## 🎓 About This Project
+
+Skillora is a peer-to-peer skill exchange platform — the idea is simple: everyone has something to teach and something to learn. Instead of paying for courses, users match with each other based on complementary skills and schedule learning sessions directly in the app.
+
+---
+
+## 🙌 Connect With Me
+
+- LinkedIn: [Hanzla Sajid](https://www.linkedin.com/in/hanzla-sajid-flutter/)
+- GitHub: [HanzlaSajid888](https://github.com/HanzlaSajid888)
+
+---
+
+> ⭐ If you found this project helpful, please give it a star!
