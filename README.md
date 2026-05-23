@@ -7,22 +7,6 @@ A full-featured skill exchange mobile app built with **Flutter & Firebase**. Con
 
 ---
 
-## 📱 Screenshots
-
-| Login | Teach Skills | Learn Skills | Messages |
-|---|---|---|---|
-| ![Login](screenshots/skillora_login.jpeg) | ![Teach](screenshots/skillora_teach.jpeg) | ![Learn](screenshots/skillora_learn.jpeg) | ![Messages](screenshots/skillora_messages.jpeg) |
-
-| Schedule Session | Chat | Match Card | It's a Match! |
-|---|---|---|---|
-| ![Schedule](screenshots/skillora_schedule.jpeg) | ![Chat](screenshots/skillora_chat.jpeg) | ![Match Card](screenshots/skillora_match_card.jpeg) | ![Match](screenshots/skillora_its_a_match.jpeg) |
-
-| Call Options | Profile | Receive Skill |
-|---|---|---|
-| ![Call](screenshots/skillora_call.jpeg) | ![Profile](screenshots/skillora_profile.jpeg) | ![Receive](screenshots/skillora_receive_skill.jpeg) |
-
----
-
 ## ✨ Features
 
 ### 👤 User Side
